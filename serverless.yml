@@ -1,0 +1,77 @@
+service:
+  name: serverlessIgniteChallenge12
+
+plugins:
+  - serverless-offline
+  - serverless-esbuild
+  - serverless-dynamodb-local
+
+custom:
+  esbuild:
+    external:
+      - chrome-aws-lambda
+  dynamodb:
+    stages:
+      - dev
+      - local
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+
+functions:
+  createTodoItem:
+    handler: src/functions/createTodoItem.handle
+    events:
+      - http:
+          method: POST
+          path: createTodoItem/{id}
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:PutItem
+        Resource: "arn:aws:dynamodb:${self.provider.region}:*:table/users_todos"
+  listTodoItem:
+    handler: src/functions/listTodoItem.handle
+    events:
+      - http:
+          method: GET
+          path: listTodoItem/{id}
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+    Resource: "arn:aws:dynamodb:${self.provider.region}:*:table/users_todos"
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: sa-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource: "*"
+
+resources:
+  Resources:
+    dbUsersTodos:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: users_todos
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
